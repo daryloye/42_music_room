@@ -1,0 +1,10 @@
+{
+  "scripts": {
+    "format": "prettier --write \"prisma/**/*.prisma\"",
+    "format:check": "prettier --check \"prisma/**/*.prisma\""
+  },
+  "devDependencies": {
+    "prettier": "^3.9.6",
+    "prettier-plugin-prisma": "^5.0.0"
+  }
+}

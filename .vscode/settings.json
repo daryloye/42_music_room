@@ -1,0 +1,16 @@
+{
+  "editor.formatOnSave": true,
+  "go.formatTool": "goimports",
+  "[go]": {
+    "editor.defaultFormatter": "golang.go"
+  },
+  "prettier.prettierPath": "./backend/node_modules/prettier",
+  "prettier.configPath": "./backend/prettier.config.cjs",
+  "prettier.documentSelectors": ["**/*.prisma"],
+  "files.associations": {
+    "*.prisma": "prisma"
+  },
+  "[prisma]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  }
+}
