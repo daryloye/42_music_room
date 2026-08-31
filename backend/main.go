@@ -5,9 +5,9 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"server/api/user"
 	"server/config"
 	"server/controller"
-	"server/helper"
 	"server/repository"
 	"server/router"
 	"server/service"
@@ -25,13 +25,20 @@ func main() {
 	fmt.Println("Server starting on port " + os.Getenv("PORT"))
 
 	db, err := config.ConnectDB()
-	helper.ErrorPanic(err)
+	if err != nil {
+		log.Fatal("Could not connect to DB: ", err)
+	}
 	defer db.Prisma.Disconnect()
 
 	postRepository := repository.NewPostRepository(db)
 	postService := service.NewPostService(postRepository)
 	postController := controller.NewPostController(postService)
-	routes := router.NewRouter(postController)
+
+	userRepository := user.NewUserRepository(db)
+	userService := user.NewUserService(userRepository)
+	userController := user.NewUserController(userService)
+
+	routes := router.NewRouter(postController, userController)
 
 	server := &http.Server{
 		Addr:           ":" + os.Getenv("PORT"),

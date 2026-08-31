@@ -1,10 +1,18 @@
 info:
   name: main
   type: http
+  seq: 1
 
 http:
-  method: GET
-  url: http://localhost:8080/
+  method: POST
+  url: http://localhost:8080/api/auth/signup
+  params:
+    - name: ""
+      value: ""
+      type: query
+  body:
+    type: json
+    data: '{email:"test", password:"test"}'
   auth: inherit
 
 settings:
@@ -12,3 +20,4 @@ settings:
   timeout: 0
   followRedirects: true
   maxRedirects: 5
+​
