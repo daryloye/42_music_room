@@ -24,7 +24,7 @@ func healthCheckHandler(w http.ResponseWriter, r *http.Request, p httprouter.Par
 	w.WriteHeader(http.StatusOK)
 
 	if err := json.NewEncoder(w).Encode(response); err != nil {
-		log.Println("failed to write health response: ", err)
+		log.Println("Failed to write health response:", err)
 	}
 }
 
@@ -40,6 +40,8 @@ func NewRouter(postController *controller.PostController, userController *user.U
 	router.DELETE("/api/post/:postId", postController.Delete)
 
 	router.POST("/api/auth/signup", userController.CreateAccount)
+	router.GET("/api/auth/verify", userController.VerifyAccount)
+	router.POST("/api/auth/login", userController.Login)
 
 	return router
 }

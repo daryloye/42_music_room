@@ -21,3 +21,7 @@ if ! cmp -s "$before" "$after"; then
 fi
 
 make format-check
+
+echo ""
+echo "Generating swagger docs"
+make generate-swagger

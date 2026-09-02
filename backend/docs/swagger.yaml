@@ -1,0 +1,52 @@
+definitions:
+  user.CreateAccountRequest:
+    properties:
+      email:
+        maxLength: 100
+        minLength: 1
+        type: string
+      password:
+        type: string
+    required:
+    - email
+    - password
+    type: object
+info:
+  contact: {}
+paths:
+  /api/auth/signup:
+    post:
+      parameters:
+      - description: Email and password
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/user.CreateAccountRequest'
+      responses:
+        "201":
+          description: Created
+        "400":
+          description: Bad Request
+        "409":
+          description: Conflict
+        "500":
+          description: Internal Server Error
+      summary: Create account
+  /api/auth/verify:
+    get:
+      parameters:
+      - description: Verification token
+        in: query
+        name: token
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+        "500":
+          description: Internal Server Error
+      summary: Verify account
+swagger: "2.0"

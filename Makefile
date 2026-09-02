@@ -4,15 +4,16 @@ GOIMPORTS_VERSION ?= v0.24.0
 GOIMPORTS := $(shell go env GOPATH)/bin/goimports
 GO_FILES := $(shell find backend -type f -name '*.go' ! -path 'backend/prisma/db/*')
 
-.PHONY: run generate-prisma create-db setup format format-check
+.PHONY: run setup create-db generate-prisma generate-swagger format format-check
 
 run:
 	cd backend && go run main.go
 
-generate-prisma:
-	cd backend && go run github.com/steebchen/prisma-client-go db push
-	cd backend && go generate ./...
-	cd backend && go mod tidy
+setup:
+	go install golang.org/x/tools/cmd/goimports@$(GOIMPORTS_VERSION)
+	cd backend && go mod download
+	cd backend && npm ci
+	git config core.hooksPath .githooks
 
 create-db:
 	docker run --name music-room-postgres \
@@ -22,11 +23,13 @@ create-db:
     -p 5432:5432 \
     -d postgres:16-alpine
 
-setup:
-	go install golang.org/x/tools/cmd/goimports@$(GOIMPORTS_VERSION)
-	cd backend && go mod download
-	cd backend && npm ci
-	git config core.hooksPath .githooks
+generate-prisma:
+	cd backend && go run github.com/steebchen/prisma-client-go db push
+	cd backend && go generate ./...
+	cd backend && go mod tidy
+
+generate-swagger:
+	cd backend && swag init
 
 format:
 	$(GOIMPORTS) -w $(GO_FILES)

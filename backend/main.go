@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -19,14 +18,14 @@ import (
 func main() {
 	err := godotenv.Load()
 	if err != nil {
-		log.Fatal("Could not load environment variables: ", err)
+		log.Fatal("Could not load environment variables:", err)
 	}
 
-	fmt.Println("Server starting on port " + os.Getenv("PORT"))
+	log.Println("Server starting on port", os.Getenv("BACKEND_PORT"))
 
 	db, err := config.ConnectDB()
 	if err != nil {
-		log.Fatal("Could not connect to DB: ", err)
+		log.Fatal("Could not connect to DB:", err)
 	}
 	defer db.Prisma.Disconnect()
 
@@ -41,7 +40,7 @@ func main() {
 	routes := router.NewRouter(postController, userController)
 
 	server := &http.Server{
-		Addr:           ":" + os.Getenv("PORT"),
+		Addr:           ":" + os.Getenv("BACKEND_PORT"),
 		ReadTimeout:    10 * time.Second,
 		WriteTimeout:   10 * time.Second,
 		MaxHeaderBytes: 1 << 20,
@@ -50,6 +49,6 @@ func main() {
 
 	err = server.ListenAndServe()
 	if err != nil {
-		log.Fatal("Could not start server: ", err)
+		log.Fatal("Could not start server:", err)
 	}
 }

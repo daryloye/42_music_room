@@ -7,6 +7,7 @@
   "prettier.prettierPath": "./backend/node_modules/prettier",
   "prettier.configPath": "./backend/prettier.config.cjs",
   "prettier.documentSelectors": ["**/*.prisma"],
+  "prisma.pinToPrisma6": true,
   "files.associations": {
     "*.prisma": "prisma"
   },

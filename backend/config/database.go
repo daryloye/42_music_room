@@ -1,7 +1,7 @@
 package config
 
 import (
-	"fmt"
+	"log"
 	"server/prisma/db"
 )
 
@@ -12,6 +12,6 @@ func ConnectDB() (*db.PrismaClient, error) {
 		return nil, err
 	}
 
-	fmt.Println("Connected to database")
+	log.Println("Connected to database")
 	return client, nil
 }
