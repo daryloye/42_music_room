@@ -1,0 +1,24 @@
+meta {
+  name: verify
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/api/auth/signup
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "email": "daryloye@gmail.com",
+    "password":"123"
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
+​

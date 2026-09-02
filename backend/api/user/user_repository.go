@@ -109,6 +109,7 @@ func (r *UserRepositoryImpl) SetVerified(ctx context.Context, token string) erro
 	_, err = r.Db.User.
 		FindUnique(db.User.ID.Equals(user.ID)).
 		Update(
+			db.User.VerificationToken.Set(""),
 			db.User.IsVerified.Set(true),
 		).
 		Exec(ctx)

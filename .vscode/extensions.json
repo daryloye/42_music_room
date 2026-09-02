@@ -1,6 +1,5 @@
 {
   "recommendations": [
-    "esbenp.prettier-vscode",
     "prisma.prisma",
     "golang.go"
   ]

@@ -1,0 +1,47 @@
+services:
+  backend:
+    build:
+      context: ./backend
+    env_file:
+      - .env
+    environment:
+      POSTGRES_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@database:5432/${POSTGRES_DB}
+    command: >
+      sh -c "
+        go run github.com/steebchen/prisma-client-go db push --skip-generate --schema=prisma/schema.prisma &&
+        /server
+      "
+    ports:
+      - "${BACKEND_PORT}:${BACKEND_PORT}"
+    networks:
+      - app-network
+    depends_on:
+      database:
+        condition: service_healthy
+
+  database:
+    image: postgres:16-alpine
+    restart: always
+    shm_size: 128mb
+    env_file:
+      - .env
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - app-network
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB} -h 127.0.0.1 -p ${POSTGRES_PORT}",
+        ]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  postgres-data:

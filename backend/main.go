@@ -16,10 +16,7 @@ import (
 )
 
 func main() {
-	err := godotenv.Load()
-	if err != nil {
-		log.Fatal("Could not load environment variables:", err)
-	}
+	godotenv.Load()
 
 	log.Println("Server starting on port", os.Getenv("BACKEND_PORT"))
 

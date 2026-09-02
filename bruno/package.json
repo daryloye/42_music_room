@@ -1,0 +1,10 @@
+{
+  "name": "bruno",
+  "private": true,
+  "devDependencies": {
+    "@usebruno/cli": "^3.0.3"
+  },
+  "scripts": {
+    "test": "bru run . -r --tests-only --env music-room --insecure"
+  }
+}

@@ -4,24 +4,25 @@ GOIMPORTS_VERSION ?= v0.24.0
 GOIMPORTS := $(shell go env GOPATH)/bin/goimports
 GO_FILES := $(shell find backend -type f -name '*.go' ! -path 'backend/prisma/db/*')
 
-.PHONY: run setup create-db generate-prisma generate-swagger format format-check
+COMPOSE=docker-compose
+DEV_COMPOSE=$(COMPOSE) -f docker-compose.yml -f docker-compose.dev.yml
 
-run:
-	cd backend && go run main.go
+.PHONY: dev up down setup generate-prisma generate-swagger test format docker-clean
+
+dev:
+	$(DEV_COMPOSE) up --abort-on-container-exit
+
+up:
+	$(COMPOSE) up -d --build
+
+down:
+	$(COMPOSE) down
 
 setup:
 	go install golang.org/x/tools/cmd/goimports@$(GOIMPORTS_VERSION)
 	cd backend && go mod download
-	cd backend && npm ci
+	cd bruno && npm ci
 	git config core.hooksPath .githooks
-
-create-db:
-	docker run --name music-room-postgres \
-    -e POSTGRES_USER=postgres \
-    -e POSTGRES_PASSWORD=postgres \
-    -e POSTGRES_DB=music_room \
-    -p 5432:5432 \
-    -d postgres:16-alpine
 
 generate-prisma:
 	cd backend && go run github.com/steebchen/prisma-client-go db push
@@ -31,16 +32,13 @@ generate-prisma:
 generate-swagger:
 	cd backend && swag init
 
+test:
+	cd bruno && npm run test
+
 format:
 	$(GOIMPORTS) -w $(GO_FILES)
-	cd backend && npm run format
+	cd backend && go run github.com/steebchen/prisma-client-go format --schema=prisma/schema.prisma
 
-format-check:
-	test -x "$(GOIMPORTS)" || { echo "goimports is missing; run 'make setup'"; exit 1; }
-	unformatted="$$($(GOIMPORTS) -l $(GO_FILES))"; \
-	if test -n "$$unformatted"; then \
-		echo "Go files need formatting:"; \
-		echo "$$unformatted"; \
-		exit 1; \
-	fi
-	cd backend && npm run format:check
+docker-clean:
+	$(DEV_COMPOSE) down --volumns --remove-orphans
+	$(COMPOSE) down --remove-orphans --rmi local
