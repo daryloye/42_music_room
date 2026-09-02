@@ -11,9 +11,84 @@ definitions:
     - email
     - password
     type: object
+  user.ForgetPasswordRequest:
+    properties:
+      email:
+        maxLength: 100
+        minLength: 1
+        type: string
+    required:
+    - email
+    type: object
+  user.ResetPasswordRequest:
+    properties:
+      password:
+        type: string
+      token:
+        type: string
+    required:
+    - password
+    - token
+    type: object
 info:
   contact: {}
 paths:
+  /api/auth/forget-password:
+    post:
+      parameters:
+      - description: Email
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/user.ForgetPasswordRequest'
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+        "500":
+          description: Internal Server Error
+      summary: Forget password
+  /api/auth/login:
+    post:
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+        "500":
+          description: Internal Server Error
+      summary: Login
+  /api/auth/logout:
+    post:
+      responses:
+        "200":
+          description: OK
+        "500":
+          description: Internal Server Error
+      summary: Logout
+  /api/auth/reset-password:
+    post:
+      parameters:
+      - description: Token and password
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/user.ResetPasswordRequest'
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+        "500":
+          description: Internal Server Error
+      summary: Reset password
   /api/auth/signup:
     post:
       parameters:

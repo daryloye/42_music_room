@@ -1,0 +1,22 @@
+meta {
+  name: 01_verify
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/auth/verify
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "token":"DQJNH55DE4O6D65VZ7ZD6JTNDH"
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

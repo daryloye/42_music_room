@@ -5,7 +5,7 @@ services:
     env_file:
       - .env
     environment:
-      POSTGRES_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@database:5432/${POSTGRES_DB}
+      POSTGRES_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@database:${POSTGRES_PORT}/${POSTGRES_DB}
     command: >
       sh -c "
         go run github.com/steebchen/prisma-client-go db push --skip-generate --schema=prisma/schema.prisma &&

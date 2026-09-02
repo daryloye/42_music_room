@@ -42,6 +42,9 @@ func NewRouter(postController *controller.PostController, userController *user.U
 	router.POST("/api/auth/signup", userController.CreateAccount)
 	router.GET("/api/auth/verify", userController.VerifyAccount)
 	router.POST("/api/auth/login", userController.Login)
+	router.POST("/api/auth/logout", userController.Logout)
+	router.POST("/api/auth/forget-password", userController.ForgetPassword)
+	router.POST("/api/auth/reset-password", userController.ResetPassword)
 
 	return router
 }

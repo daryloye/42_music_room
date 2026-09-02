@@ -61,7 +61,8 @@ func SendPasswordResetEmail(email, token string) error {
 	message := fmt.Sprintf(
 		`<h2>Hello!</h2>
 		<p>Please reset your Music Room password by clicking this link:</p>
-		<a href="%s">Reset password</a>`,
+		<a href="%s">Reset password</a>
+		<p>The link will expire in 15 minutes</p>`,
 		url,
 	)
 

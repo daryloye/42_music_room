@@ -4,14 +4,18 @@ import (
 	"context"
 	"server/helper"
 	"server/prisma/db"
+	"time"
 )
 
 type UserRepository interface {
 	Create(ctx context.Context, email, password, verificationToken string) (string, error)
 	Delete(ctx context.Context, id string) error
 	FindById(ctx context.Context, id string) (User, error)
-	UpdatePassword(ctx context.Context, id string, password string) error
+	FindByEmail(ctx context.Context, email string) (User, error)
 	SetVerified(ctx context.Context, token string) error
+	SetResetToken(ctx context.Context, email string, token string, expiry time.Time) error
+	ResetPassword(ctx context.Context, token, password string) error
+	UpdatePassword(ctx context.Context, id string, password string) error
 }
 
 type UserRepositoryImpl struct {
@@ -76,11 +80,51 @@ func (r *UserRepositoryImpl) FindById(ctx context.Context, id string) (User, err
 	}, nil
 }
 
-func (r *UserRepositoryImpl) UpdatePassword(ctx context.Context, id string, password string) error {
+func (r *UserRepositoryImpl) FindByEmail(ctx context.Context, email string) (User, error) {
+	result, err := r.Db.User.
+		FindUnique(db.User.Email.Equals(email)).
+		Exec(ctx)
+
+	if err != nil {
+		if db.IsErrNotFound(err) {
+			return User{}, helper.ErrUserNotFound
+		}
+		return User{}, err
+	}
+
+	verificationToken, _ := result.VerificationToken()
+
+	return User{
+		Id:                result.ID,
+		Email:             result.Email,
+		Password:          result.Password,
+		VerificationToken: verificationToken,
+		IsVerified:        result.IsVerified,
+	}, nil
+}
+
+func (r *UserRepositoryImpl) SetVerified(ctx context.Context, token string) error {
 	_, err := r.Db.User.
-		FindUnique(db.User.ID.Equals(id)).
+		FindMany(db.User.VerificationToken.Equals(token)).
 		Update(
-			db.User.Password.Set(password),
+			db.User.VerificationToken.Set(""),
+			db.User.IsVerified.Set(true),
+		).
+		Exec(ctx)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (r *UserRepositoryImpl) SetResetToken(ctx context.Context, email, token string, expiry time.Time) error {
+	_, err := r.Db.User.
+		FindUnique(db.User.Email.Equals(email)).
+		Update(
+			db.User.ResetToken.Set(token),
+			db.User.ResetTokenExpiry.Set(expiry),
 		).
 		Exec(ctx)
 
@@ -94,27 +138,41 @@ func (r *UserRepositoryImpl) UpdatePassword(ctx context.Context, id string, pass
 	return nil
 }
 
-func (r *UserRepositoryImpl) SetVerified(ctx context.Context, token string) error {
-	user, err := r.Db.User.
-		FindFirst(db.User.VerificationToken.Equals(token)).
+func (r *UserRepositoryImpl) ResetPassword(ctx context.Context, token, password string) error {
+	result, err := r.Db.User.
+		FindMany(
+			db.User.ResetToken.Equals(token),
+			db.User.ResetTokenExpiry.After(time.Now()),
+		).
+		Update(db.User.Password.Set(password),
+			db.User.ResetToken.Set(""),
+			db.User.ResetTokenExpiry.Set(time.Now()),
+		).
+		Exec(ctx)
+
+	if err != nil {
+		return err
+	}
+
+	if result.Count == 0 {
+		return helper.ErrInvalidOrExpiredToken
+	}
+
+	return nil
+}
+
+func (r *UserRepositoryImpl) UpdatePassword(ctx context.Context, id string, password string) error {
+	_, err := r.Db.User.
+		FindUnique(db.User.ID.Equals(id)).
+		Update(
+			db.User.Password.Set(password),
+		).
 		Exec(ctx)
 
 	if err != nil {
 		if db.IsErrNotFound(err) {
 			return helper.ErrUserNotFound
 		}
-		return err
-	}
-
-	_, err = r.Db.User.
-		FindUnique(db.User.ID.Equals(user.ID)).
-		Update(
-			db.User.VerificationToken.Set(""),
-			db.User.IsVerified.Set(true),
-		).
-		Exec(ctx)
-
-	if err != nil {
 		return err
 	}
 

@@ -25,9 +25,7 @@ setup:
 	git config core.hooksPath .githooks
 
 generate-prisma:
-	cd backend && go run github.com/steebchen/prisma-client-go db push
 	cd backend && go generate ./...
-	cd backend && go mod tidy
 
 generate-swagger:
 	cd backend && swag init
@@ -40,5 +38,5 @@ format:
 	cd backend && go run github.com/steebchen/prisma-client-go format --schema=prisma/schema.prisma
 
 docker-clean:
-	$(DEV_COMPOSE) down --volumns --remove-orphans
+	$(DEV_COMPOSE) down --volumes --remove-orphans
 	$(COMPOSE) down --remove-orphans --rmi local

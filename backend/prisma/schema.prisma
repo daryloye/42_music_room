@@ -22,8 +22,10 @@ model User {
   createdAt DateTime? @default(now()) @map("created_at")
   updatedAt DateTime? @updatedAt @map("updated_at")
 
-  email             String  @unique @map("email") @db.VarChar(100)
-  password          String  @map("password")
-  verificationToken String? @map("verification_token")
-  isVerified        Boolean @default(false) @map("is_verified")
+  email             String    @unique @map("email") @db.VarChar(100)
+  password          String    @map("password")
+  verificationToken String?   @map("verification_token")
+  resetToken        String?   @map("reset_token")
+  resetTokenExpiry  DateTime? @map("reset_token_expiry")
+  isVerified        Boolean   @default(false) @map("is_verified")
 }
