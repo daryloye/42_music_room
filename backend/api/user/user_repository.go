@@ -104,7 +104,7 @@ func (r *UserRepositoryImpl) FindByEmail(ctx context.Context, email string) (Use
 }
 
 func (r *UserRepositoryImpl) SetVerified(ctx context.Context, token string) error {
-	_, err := r.Db.User.
+	result, err := r.Db.User.
 		FindMany(db.User.VerificationToken.Equals(token)).
 		Update(
 			db.User.VerificationToken.Set(""),
@@ -114,6 +114,10 @@ func (r *UserRepositoryImpl) SetVerified(ctx context.Context, token string) erro
 
 	if err != nil {
 		return err
+	}
+
+	if result.Count == 0 {
+		return helper.ErrInvalidOrExpiredToken
 	}
 
 	return nil

@@ -1,9 +1,11 @@
-package config
+package prisma
 
 import (
 	"log"
 	"server/prisma/db"
 )
+
+//go:generate go run github.com/steebchen/prisma-client-go generate
 
 func ConnectDB() (*db.PrismaClient, error) {
 	client := db.NewClient()

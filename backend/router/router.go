@@ -5,7 +5,6 @@ import (
 	"log"
 	"net/http"
 	"server/api/user"
-	"server/controller"
 	"time"
 
 	"github.com/julienschmidt/httprouter"
@@ -28,16 +27,10 @@ func healthCheckHandler(w http.ResponseWriter, r *http.Request, p httprouter.Par
 	}
 }
 
-func NewRouter(postController *controller.PostController, userController *user.UserController) *httprouter.Router {
+func NewRouter(userController *user.UserController) *httprouter.Router {
 	router := httprouter.New()
 
 	router.GET("/health", healthCheckHandler)
-
-	router.GET("/api/post", postController.FindAll)
-	router.GET("/api/post/:postId", postController.FindById)
-	router.POST("/api/post", postController.Create)
-	router.PATCH("/api/post/:postId", postController.Update)
-	router.DELETE("/api/post/:postId", postController.Delete)
 
 	router.POST("/api/auth/signup", userController.CreateAccount)
 	router.GET("/api/auth/verify", userController.VerifyAccount)

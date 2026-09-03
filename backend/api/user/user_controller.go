@@ -87,7 +87,7 @@ func (c *UserController) VerifyAccount(w http.ResponseWriter, r *http.Request, p
 	if err := c.UserService.VerifyAccount(r.Context(), request.Token); err != nil {
 		log.Println("Failed to verify account:", err)
 		switch {
-		case errors.Is(err, helper.ErrUserNotFound):
+		case errors.Is(err, helper.ErrInvalidOrExpiredToken):
 			http.Error(w, err.Error(), http.StatusNotFound)
 		default:
 			http.Error(w, "Internal server error", http.StatusInternalServerError)

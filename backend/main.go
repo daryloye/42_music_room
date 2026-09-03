@@ -5,11 +5,8 @@ import (
 	"net/http"
 	"os"
 	"server/api/user"
-	"server/config"
-	"server/controller"
-	"server/repository"
+	"server/prisma"
 	"server/router"
-	"server/service"
 	"time"
 
 	"github.com/joho/godotenv"
@@ -20,21 +17,17 @@ func main() {
 
 	log.Println("Server starting on port", os.Getenv("BACKEND_PORT"))
 
-	db, err := config.ConnectDB()
+	db, err := prisma.ConnectDB()
 	if err != nil {
 		log.Fatal("Could not connect to DB:", err)
 	}
 	defer db.Prisma.Disconnect()
 
-	postRepository := repository.NewPostRepository(db)
-	postService := service.NewPostService(postRepository)
-	postController := controller.NewPostController(postService)
-
 	userRepository := user.NewUserRepository(db)
 	userService := user.NewUserService(userRepository)
 	userController := user.NewUserController(userService)
 
-	routes := router.NewRouter(postController, userController)
+	routes := router.NewRouter(userController)
 
 	server := &http.Server{
 		Addr:           ":" + os.Getenv("BACKEND_PORT"),
