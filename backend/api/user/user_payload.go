@@ -1,8 +1,9 @@
 package user
 
 type CreateAccountRequest struct {
-	Email    string `validate:"required,min=1,max=100" json:"email"`
-	Password string `validate:"required" json:"password"`
+	Email       string `validate:"required,min=1,max=100" json:"email"`
+	Password    string `validate:"required" json:"password"`
+	DisplayName string `validate:"required,min=1,max=100" json:"display_name"`
 }
 
 type VerifyAccountRequest struct {

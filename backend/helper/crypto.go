@@ -2,15 +2,16 @@ package helper
 
 import (
 	"crypto/rand"
-	"os"
+	"crypto/sha256"
+	"encoding/hex"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
 )
 
-type AccessTokenClaims struct {
-	userId string
+type JWTClaims struct {
+	UserId string `json:"user_id"`
 	jwt.RegisteredClaims
 }
 
@@ -30,18 +31,23 @@ func CreateRandomToken() string {
 	return rand.Text()
 }
 
-func CreateAccessToken(userId string) (string, error) {
-	claims := AccessTokenClaims{
+func HashToken(token string) string {
+	hash := sha256.Sum256([]byte(token))
+	return hex.EncodeToString(hash[:])
+}
+
+func CreateJWT(userId, secret string, expiry time.Duration) (string, error) {
+	claims := JWTClaims{
 		userId,
 		jwt.RegisteredClaims{
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(15 * time.Minute)),
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(expiry)),
 		},
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 
-	signedToken, err := token.SignedString([]byte(os.Getenv("JWT_SECRET")))
+	signedToken, err := token.SignedString([]byte(secret))
 	if err != nil {
 		return "", err
 	}

@@ -3,19 +3,19 @@ package main
 import (
 	"log"
 	"net/http"
-	"os"
+	"server/api/refreshtoken"
 	"server/api/user"
+	"server/config"
 	"server/prisma"
 	"server/router"
 	"time"
-
-	"github.com/joho/godotenv"
 )
 
 func main() {
-	godotenv.Load()
-
-	log.Println("Server starting on port", os.Getenv("BACKEND_PORT"))
+	cfg, err := config.NewConfig()
+	if err != nil {
+		log.Fatal("Could not load env:", err)
+	}
 
 	db, err := prisma.ConnectDB()
 	if err != nil {
@@ -23,22 +23,27 @@ func main() {
 	}
 	defer db.Prisma.Disconnect()
 
+	refreshTokenRepository := refreshtoken.NewRefreshTokenRepository(db)
 	userRepository := user.NewUserRepository(db)
-	userService := user.NewUserService(userRepository)
-	userController := user.NewUserController(userService)
+
+	refreshTokenService := refreshtoken.NewRefreshTokenService(cfg, refreshTokenRepository)
+	userService := user.NewUserService(cfg, userRepository, refreshTokenService)
+
+	userController := user.NewUserController(cfg, userService)
 
 	routes := router.NewRouter(userController)
 
 	server := &http.Server{
-		Addr:           ":" + os.Getenv("BACKEND_PORT"),
+		Addr:           ":" + cfg.EnvBackendPort,
 		ReadTimeout:    10 * time.Second,
 		WriteTimeout:   10 * time.Second,
 		MaxHeaderBytes: 1 << 20,
 		Handler:        routes,
 	}
 
-	err = server.ListenAndServe()
-	if err != nil {
+	log.Println("Server starting on port", cfg.EnvBackendPort)
+
+	if err = server.ListenAndServe(); err != nil {
 		log.Fatal("Could not start server:", err)
 	}
 }

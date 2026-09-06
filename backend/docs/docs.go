@@ -77,6 +77,22 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/auth/refresh": {
+            "post": {
+                "summary": "Refresh Token",
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    },
+                    "500": {
+                        "description": "Internal Server Error"
+                    }
+                }
+            }
+        },
         "/api/auth/reset-password": {
             "post": {
                 "summary": "Reset password",
@@ -109,7 +125,7 @@ const docTemplate = `{
                 "summary": "Create account",
                 "parameters": [
                     {
-                        "description": "Email and password",
+                        "description": "Email, password, display name",
                         "name": "request",
                         "in": "body",
                         "required": true,
@@ -164,10 +180,16 @@ const docTemplate = `{
         "user.CreateAccountRequest": {
             "type": "object",
             "required": [
+                "display_name",
                 "email",
                 "password"
             ],
             "properties": {
+                "display_name": {
+                    "type": "string",
+                    "maxLength": 100,
+                    "minLength": 1
+                },
                 "email": {
                     "type": "string",
                     "maxLength": 100,

@@ -3,27 +3,37 @@ package user
 import (
 	"context"
 	"errors"
+	"server/api/refreshtoken"
+	"server/config"
 	"server/helper"
 	"time"
 )
 
 type UserService interface {
-	CreateAccount(ctx context.Context, email, password string) error
+	CreateAccount(ctx context.Context, email, password, displayName string) error
 	VerifyAccount(ctx context.Context, token string) error
-	Login(ctx context.Context, email, password string) (string, error)
+	Login(ctx context.Context, email, password string) (string, string, error)
 	ForgetPassword(ctx context.Context, email string) error
 	ResetPassword(ctx context.Context, token, password string) error
+	Logout(ctx context.Context, refreshToken string) error
+	RefreshToken(ctx context.Context, refreshToken string) (string, string, error)
 }
 
 type UserServiceImpl struct {
-	UserRepository UserRepository
+	Cfg                 *config.Config
+	UserRepository      UserRepository
+	RefreshTokenService refreshtoken.RefreshTokenService
 }
 
-func NewUserService(userRepository UserRepository) UserService {
-	return &UserServiceImpl{UserRepository: userRepository}
+func NewUserService(cfg *config.Config, userRepository UserRepository, refreshTokenService refreshtoken.RefreshTokenService) UserService {
+	return &UserServiceImpl{
+		Cfg:                 cfg,
+		UserRepository:      userRepository,
+		RefreshTokenService: refreshTokenService,
+	}
 }
 
-func (s *UserServiceImpl) CreateAccount(ctx context.Context, email, password string) error {
+func (s *UserServiceImpl) CreateAccount(ctx context.Context, email, password, displayName string) error {
 	hashPassword, err := helper.HashPassword(password)
 	if err != nil {
 		return err
@@ -31,15 +41,15 @@ func (s *UserServiceImpl) CreateAccount(ctx context.Context, email, password str
 
 	verificationToken := helper.CreateRandomToken()
 
-	userId, err := s.UserRepository.Create(ctx, email, hashPassword, verificationToken)
+	userId, err := s.UserRepository.Create(ctx, email, hashPassword, displayName, verificationToken)
 	if err != nil {
 		return err
 	}
 
-	if err := helper.SendVerificationEmail(email, verificationToken); err != nil {
+	if err := helper.SendVerificationEmail(s.Cfg, email, verificationToken); err != nil {
 		// Roll back user creation if email fails
 		s.UserRepository.Delete(ctx, userId)
-		return helper.ErrFailedToSendVerificationEmail
+		return helper.ErrUserFailedToSendEmail
 	}
 
 	return nil
@@ -53,32 +63,37 @@ func (s *UserServiceImpl) VerifyAccount(ctx context.Context, token string) error
 	return nil
 }
 
-func (s *UserServiceImpl) Login(ctx context.Context, email, password string) (string, error) {
+func (s *UserServiceImpl) Login(ctx context.Context, email, password string) (string, string, error) {
 	user, err := s.UserRepository.FindByEmail(ctx, email)
 	if err != nil {
 		if errors.Is(err, helper.ErrUserNotFound) {
-			return "", helper.ErrInvalidEmailOrPassword
+			return "", "", helper.ErrUserInvalidEmailOrPassword
 		}
-		return "", err
+		return "", "", err
 	}
 
 	if !helper.CheckPasswordHash(password, user.Password) {
-		return "", helper.ErrInvalidEmailOrPassword
+		return "", "", helper.ErrUserInvalidEmailOrPassword
 	}
 
 	if !user.IsVerified {
-		if err := helper.SendVerificationEmail(email, user.VerificationToken); err != nil {
-			return "", helper.ErrFailedToSendVerificationEmail
+		if err := helper.SendVerificationEmail(s.Cfg, email, user.VerificationToken); err != nil {
+			return "", "", helper.ErrUserFailedToSendEmail
 		}
-		return "", helper.ErrUserNotVerified
+		return "", "", helper.ErrUserNotVerified
 	}
 
-	accessToken, err := helper.CreateAccessToken(user.Id)
+	accessToken, err := helper.CreateJWT(user.Id, s.Cfg.EnvJwtAccessSecret, s.Cfg.EnvJwtAccessExpiry)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
-	return accessToken, nil
+	refreshToken, err := s.RefreshTokenService.Create(ctx, user.Id)
+	if err != nil {
+		return "", "", err
+	}
+
+	return accessToken, refreshToken, nil
 }
 
 func (s *UserServiceImpl) ForgetPassword(ctx context.Context, email string) error {
@@ -92,8 +107,8 @@ func (s *UserServiceImpl) ForgetPassword(ctx context.Context, email string) erro
 		return err
 	}
 
-	if err := helper.SendPasswordResetEmail(email, resetToken); err != nil {
-		return helper.ErrFailedToSendVerificationEmail
+	if err := helper.SendPasswordResetEmail(s.Cfg, email, resetToken); err != nil {
+		return helper.ErrUserFailedToSendEmail
 	}
 
 	return nil
@@ -110,4 +125,26 @@ func (s *UserServiceImpl) ResetPassword(ctx context.Context, token, password str
 	}
 
 	return nil
+}
+
+func (s *UserServiceImpl) Logout(ctx context.Context, refreshToken string) error {
+	if err := s.RefreshTokenService.Delete(ctx, refreshToken); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *UserServiceImpl) RefreshToken(ctx context.Context, oldToken string) (string, string, error) {
+	userId, newRefreshToken, err := s.RefreshTokenService.Update(ctx, oldToken)
+	if err != nil {
+		return "", "", err
+	}
+
+	newAccessToken, err := helper.CreateJWT(userId, s.Cfg.EnvJwtAccessSecret, s.Cfg.EnvJwtAccessExpiry)
+	if err != nil {
+		return "", "", err
+	}
+
+	return newAccessToken, newRefreshToken, nil
 }

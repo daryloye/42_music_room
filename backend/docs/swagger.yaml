@@ -1,6 +1,10 @@
 definitions:
   user.CreateAccountRequest:
     properties:
+      display_name:
+        maxLength: 100
+        minLength: 1
+        type: string
       email:
         maxLength: 100
         minLength: 1
@@ -8,6 +12,7 @@ definitions:
       password:
         type: string
     required:
+    - display_name
     - email
     - password
     type: object
@@ -72,6 +77,16 @@ paths:
         "500":
           description: Internal Server Error
       summary: Logout
+  /api/auth/refresh:
+    post:
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Unauthorized
+        "500":
+          description: Internal Server Error
+      summary: Refresh Token
   /api/auth/reset-password:
     post:
       parameters:
@@ -92,7 +107,7 @@ paths:
   /api/auth/signup:
     post:
       parameters:
-      - description: Email and password
+      - description: Email, password, display name
         in: body
         name: request
         required: true

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log"
 	"net/http"
+	"server/config"
 	"server/helper"
 	"time"
 
@@ -12,15 +13,16 @@ import (
 )
 
 type UserController struct {
+	Cfg         *config.Config
 	UserService UserService
 }
 
-func NewUserController(userService UserService) *UserController {
-	return &UserController{UserService: userService}
+func NewUserController(cfg *config.Config, userService UserService) *UserController {
+	return &UserController{Cfg: cfg, UserService: userService}
 }
 
 // @Summary	Create account
-// @Param request body CreateAccountRequest true "Email and password"
+// @Param request body CreateAccountRequest true "Email, password, display name"
 // @Success 201
 // @Failure 400
 // @Failure 409
@@ -34,18 +36,18 @@ func (c *UserController) CreateAccount(w http.ResponseWriter, r *http.Request, p
 		return
 	}
 
-	if request.Email == "" || request.Password == "" {
-		http.Error(w, "Email and password are required", http.StatusBadRequest)
+	if request.Email == "" || request.Password == "" || request.DisplayName == "" {
+		http.Error(w, "Email, password and display name are required", http.StatusBadRequest)
 		return
 	}
 
-	err := c.UserService.CreateAccount(r.Context(), request.Email, request.Password)
+	err := c.UserService.CreateAccount(r.Context(), request.Email, request.Password, request.DisplayName)
 	if err != nil {
 		log.Println("Failed to create account:", err)
 		switch {
-		case errors.Is(err, helper.ErrEmailAlreadyExists):
+		case errors.Is(err, helper.ErrUserEmailAlreadyExists):
 			http.Error(w, err.Error(), http.StatusConflict)
-		case errors.Is(err, helper.ErrFailedToSendVerificationEmail):
+		case errors.Is(err, helper.ErrUserFailedToSendEmail):
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		default:
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -53,12 +55,12 @@ func (c *UserController) CreateAccount(w http.ResponseWriter, r *http.Request, p
 		return
 	}
 
+	w.Header().Add("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+
 	response := map[string]string{
 		"message": "Registration successful! Please check your email to verify your account",
 	}
-
-	w.Header().Add("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
 
 	if err := json.NewEncoder(w).Encode(response); err != nil {
 		log.Println("Failed to write response:", err)
@@ -87,7 +89,7 @@ func (c *UserController) VerifyAccount(w http.ResponseWriter, r *http.Request, p
 	if err := c.UserService.VerifyAccount(r.Context(), request.Token); err != nil {
 		log.Println("Failed to verify account:", err)
 		switch {
-		case errors.Is(err, helper.ErrInvalidOrExpiredToken):
+		case errors.Is(err, helper.ErrUserInvalidOrExpiredToken):
 			http.Error(w, err.Error(), http.StatusNotFound)
 		default:
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -95,12 +97,12 @@ func (c *UserController) VerifyAccount(w http.ResponseWriter, r *http.Request, p
 		return
 	}
 
+	w.Header().Add("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+
 	response := map[string]string{
 		"message": "Email verified successfully! You can now log in",
 	}
-
-	w.Header().Add("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
 
 	if err := json.NewEncoder(w).Encode(response); err != nil {
 		log.Println("Failed to write response:", err)
@@ -128,11 +130,11 @@ func (c *UserController) Login(w http.ResponseWriter, r *http.Request, params ht
 		return
 	}
 
-	accessToken, err := c.UserService.Login(r.Context(), request.Email, request.Password)
+	accessToken, refreshToken, err := c.UserService.Login(r.Context(), request.Email, request.Password)
 	if err != nil {
 		log.Println("Failed to login:", err)
 		switch {
-		case errors.Is(err, helper.ErrInvalidEmailOrPassword):
+		case errors.Is(err, helper.ErrUserInvalidEmailOrPassword):
 			http.Error(w, err.Error(), http.StatusUnauthorized)
 		case errors.Is(err, helper.ErrUserNotVerified):
 			http.Error(w, err.Error(), http.StatusForbidden)
@@ -142,23 +144,34 @@ func (c *UserController) Login(w http.ResponseWriter, r *http.Request, params ht
 		return
 	}
 
-	response := map[string]string{
-		"message": "Login successful",
-	}
+	http.SetCookie(w, &http.Cookie{
+		Name:     "access_token",
+		Value:    accessToken,
+		Path:     "/",
+		Expires:  time.Now().Add(c.Cfg.EnvJwtAccessExpiry),
+		MaxAge:   int(c.Cfg.EnvJwtAccessExpiry.Seconds()),
+		HttpOnly: true,
+		// Secure: true,						// TODO for HTTPS
+		SameSite: http.SameSiteLaxMode,
+	})
+
+	http.SetCookie(w, &http.Cookie{
+		Name:     "refresh_token",
+		Value:    refreshToken,
+		Path:     "/",
+		Expires:  time.Now().Add(c.Cfg.EnvJwtRefreshExpiry),
+		MaxAge:   int(c.Cfg.EnvJwtRefreshExpiry.Seconds()),
+		HttpOnly: true,
+		// Secure: true,						// TODO for HTTPS
+		SameSite: http.SameSiteLaxMode,
+	})
 
 	w.Header().Add("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 
-	cookie := &http.Cookie{
-		Name:     "access_token",
-		Value:    accessToken,
-		Expires:  time.Now().Add(15 * time.Minute),
-		HttpOnly: true,
-		// Secure: true,						// TODO for HTTPS
-		SameSite: http.SameSiteLaxMode,
+	response := map[string]string{
+		"message": "Login successful",
 	}
-
-	http.SetCookie(w, cookie)
 
 	if err := json.NewEncoder(w).Encode(response); err != nil {
 		log.Println("Failed to write response:", err)
@@ -170,22 +183,35 @@ func (c *UserController) Login(w http.ResponseWriter, r *http.Request, params ht
 // @Failure 500
 // @Router /api/auth/logout [post]
 func (c *UserController) Logout(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
-	response := map[string]string{
-		"message": "Logged out",
+	refreshToken, _ := r.Cookie("refresh_token")
+	if refreshToken != nil && refreshToken.Value != "" {
+		c.UserService.Logout(r.Context(), refreshToken.Value)
 	}
 
-	w.Header().Add("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-
-	cookie := &http.Cookie{
+	http.SetCookie(w, &http.Cookie{
 		Name:     "access_token",
+		Path:     "/",
 		MaxAge:   -1,
 		HttpOnly: true,
 		// Secure: true, 						// TODO for HTTPS
 		SameSite: http.SameSiteLaxMode,
-	}
+	})
 
-	http.SetCookie(w, cookie)
+	http.SetCookie(w, &http.Cookie{
+		Name:     "refresh_token",
+		Path:     "/",
+		MaxAge:   -1,
+		HttpOnly: true,
+		// Secure: true, 						// TODO for HTTPS
+		SameSite: http.SameSiteLaxMode,
+	})
+
+	w.Header().Add("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+
+	response := map[string]string{
+		"message": "Logged out",
+	}
 
 	if err := json.NewEncoder(w).Encode(response); err != nil {
 		log.Println("Failed to write response:", err)
@@ -217,12 +243,12 @@ func (c *UserController) ForgetPassword(w http.ResponseWriter, r *http.Request, 
 		return
 	}
 
+	w.Header().Add("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+
 	response := map[string]string{
 		"message": "A password reset link has been sent",
 	}
-
-	w.Header().Add("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
 
 	if err := json.NewEncoder(w).Encode(response); err != nil {
 		log.Println("Failed to write response:", err)
@@ -250,9 +276,8 @@ func (c *UserController) ResetPassword(w http.ResponseWriter, r *http.Request, p
 
 	if err := c.UserService.ResetPassword(r.Context(), request.Token, request.Password); err != nil {
 		log.Println("Failed to reset password:", err)
-
 		switch {
-		case errors.Is(err, helper.ErrInvalidOrExpiredToken):
+		case errors.Is(err, helper.ErrUserInvalidOrExpiredToken):
 			http.Error(w, err.Error(), http.StatusBadRequest)
 		default:
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -260,12 +285,70 @@ func (c *UserController) ResetPassword(w http.ResponseWriter, r *http.Request, p
 		return
 	}
 
+	w.Header().Add("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+
 	response := map[string]string{
 		"message": "Password updated",
 	}
 
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		log.Println("Failed to write response:", err)
+	}
+}
+
+// @Summary Refresh Token
+// @Success 200
+// @Failure 401
+// @Failure 500
+// @Router /api/auth/refresh [post]
+func (c *UserController) RefreshToken(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
+	refreshToken, err := r.Cookie("refresh_token")
+	if err != nil || refreshToken.Value == "" {
+		http.Error(w, helper.ErrUserInvalidOrExpiredToken.Error(), http.StatusUnauthorized)
+		return
+	}
+
+	newAccessToken, newRefreshToken, err := c.UserService.RefreshToken(r.Context(), refreshToken.Value)
+	if err != nil {
+		log.Println("Failed to refresh token:", err)
+		switch {
+		case errors.Is(err, helper.ErrUserInvalidOrExpiredToken):
+			http.Error(w, err.Error(), http.StatusUnauthorized)
+		default:
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+		}
+		return
+	}
+
+	http.SetCookie(w, &http.Cookie{
+		Name:     "access_token",
+		Value:    newAccessToken,
+		Path:     "/",
+		Expires:  time.Now().Add(c.Cfg.EnvJwtAccessExpiry),
+		MaxAge:   int(c.Cfg.EnvJwtAccessExpiry.Seconds()),
+		HttpOnly: true,
+		// Secure: true,						// TODO for HTTPS
+		SameSite: http.SameSiteLaxMode,
+	})
+
+	http.SetCookie(w, &http.Cookie{
+		Name:     "refresh_token",
+		Value:    newRefreshToken,
+		Path:     "/",
+		Expires:  time.Now().Add(c.Cfg.EnvJwtRefreshExpiry),
+		MaxAge:   int(c.Cfg.EnvJwtRefreshExpiry.Seconds()),
+		HttpOnly: true,
+		// Secure: true,						// TODO for HTTPS
+		SameSite: http.SameSiteLaxMode,
+	})
+
 	w.Header().Add("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
+
+	response := map[string]string{
+		"message": "Token refreshed",
+	}
 
 	if err := json.NewEncoder(w).Encode(response); err != nil {
 		log.Println("Failed to write response:", err)

@@ -8,7 +8,7 @@ import (
 )
 
 type UserRepository interface {
-	Create(ctx context.Context, email, password, verificationToken string) (string, error)
+	Create(ctx context.Context, email, password, displayName, verificationToken string) (string, error)
 	Delete(ctx context.Context, id string) error
 	FindById(ctx context.Context, id string) (User, error)
 	FindByEmail(ctx context.Context, email string) (User, error)
@@ -26,18 +26,19 @@ func NewUserRepository(dbClient *db.PrismaClient) UserRepository {
 	return &UserRepositoryImpl{Db: dbClient}
 }
 
-func (r *UserRepositoryImpl) Create(ctx context.Context, email, password, verificationToken string) (string, error) {
+func (r *UserRepositoryImpl) Create(ctx context.Context, email, password, displayName, verificationToken string) (string, error) {
 	result, err := r.Db.User.
 		CreateOne(
 			db.User.Email.Set(email),
 			db.User.Password.Set(password),
+			db.User.DisplayName.Set(displayName),
 			db.User.VerificationToken.Set(verificationToken),
 		).
 		Exec(ctx)
 
 	if err != nil {
 		if _, ok := db.IsErrUniqueConstraint(err); ok {
-			return "", helper.ErrEmailAlreadyExists
+			return "", helper.ErrUserEmailAlreadyExists
 		}
 		return "", err
 	}
@@ -107,7 +108,7 @@ func (r *UserRepositoryImpl) SetVerified(ctx context.Context, token string) erro
 	result, err := r.Db.User.
 		FindMany(db.User.VerificationToken.Equals(token)).
 		Update(
-			db.User.VerificationToken.Set(""),
+			db.User.VerificationToken.SetOptional(nil),
 			db.User.IsVerified.Set(true),
 		).
 		Exec(ctx)
@@ -117,7 +118,7 @@ func (r *UserRepositoryImpl) SetVerified(ctx context.Context, token string) erro
 	}
 
 	if result.Count == 0 {
-		return helper.ErrInvalidOrExpiredToken
+		return helper.ErrUserInvalidOrExpiredToken
 	}
 
 	return nil
@@ -149,8 +150,8 @@ func (r *UserRepositoryImpl) ResetPassword(ctx context.Context, token, password 
 			db.User.ResetTokenExpiry.After(time.Now()),
 		).
 		Update(db.User.Password.Set(password),
-			db.User.ResetToken.Set(""),
-			db.User.ResetTokenExpiry.Set(time.Now()),
+			db.User.ResetToken.SetOptional(nil),
+			db.User.ResetTokenExpiry.SetOptional(nil),
 		).
 		Exec(ctx)
 
@@ -159,7 +160,7 @@ func (r *UserRepositoryImpl) ResetPassword(ctx context.Context, token, password 
 	}
 
 	if result.Count == 0 {
-		return helper.ErrInvalidOrExpiredToken
+		return helper.ErrUserInvalidOrExpiredToken
 	}
 
 	return nil

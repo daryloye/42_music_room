@@ -3,21 +3,21 @@ package helper
 import (
 	"fmt"
 	"log"
-	"os"
+	"server/config"
 
 	"gopkg.in/gomail.v2"
 )
 
-func SendVerificationEmail(email, token string) error {
+func SendVerificationEmail(cfg *config.Config, email, token string) error {
 	m := gomail.NewMessage()
 	m.SetHeader("To", email)
-	m.SetHeader("From", os.Getenv("EMAIL_USER"))
+	m.SetHeader("From", cfg.EnvEmailUser)
 	m.SetHeader("Subject", "Verify Your Music Room Account")
 
 	url := fmt.Sprintf(
 		"%s:%s/verify?token=%s",
-		os.Getenv("APP_HOSTNAME"),
-		os.Getenv("FRONTEND_PORT"),
+		cfg.EnvAppHostname,
+		cfg.EnvFrontendPort,
 		token,
 	)
 
@@ -33,8 +33,8 @@ func SendVerificationEmail(email, token string) error {
 	d := gomail.NewDialer(
 		"smtp.gmail.com",
 		587,
-		os.Getenv("EMAIL_USER"),
-		os.Getenv("EMAIL_PASSWORD"),
+		cfg.EnvEmailUser,
+		cfg.EnvEmailPassword,
 	)
 
 	if err := d.DialAndSend(m); err != nil {
@@ -45,16 +45,16 @@ func SendVerificationEmail(email, token string) error {
 	return nil
 }
 
-func SendPasswordResetEmail(email, token string) error {
+func SendPasswordResetEmail(cfg *config.Config, email, token string) error {
 	m := gomail.NewMessage()
 	m.SetHeader("To", email)
-	m.SetHeader("From", os.Getenv("EMAIL_USER"))
+	m.SetHeader("From", cfg.EnvEmailUser)
 	m.SetHeader("Subject", "Reset Your Music Room Password")
 
 	url := fmt.Sprintf(
 		"%s:%s/resetpassword?token=%s",
-		os.Getenv("APP_HOSTNAME"),
-		os.Getenv("FRONTEND_PORT"),
+		cfg.EnvAppHostname,
+		cfg.EnvFrontendPort,
 		token,
 	)
 
@@ -71,8 +71,8 @@ func SendPasswordResetEmail(email, token string) error {
 	d := gomail.NewDialer(
 		"smtp.gmail.com",
 		587,
-		os.Getenv("EMAIL_USER"),
-		os.Getenv("EMAIL_PASSWORD"),
+		cfg.EnvEmailUser,
+		cfg.EnvEmailPassword,
 	)
 
 	if err := d.DialAndSend(m); err != nil {

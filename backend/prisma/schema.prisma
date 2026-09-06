@@ -8,14 +8,21 @@ generator db {
 }
 
 model User {
-  id        String    @id @unique @default(dbgenerated("gen_random_uuid()")) @db.VarChar(100)
-  createdAt DateTime? @default(now()) @map("created_at")
-  updatedAt DateTime? @updatedAt @map("updated_at")
+  id                String         @id @unique @default(dbgenerated("gen_random_uuid()"))
+  email             String         @unique @map("email") @db.VarChar(100)
+  password          String         @map("password")
+  displayName       String         @map("display_name") @db.VarChar(100)
+  verificationToken String?        @unique @map("verification_token")
+  resetToken        String?        @unique @map("reset_token")
+  resetTokenExpiry  DateTime?      @map("reset_token_expiry")
+  isVerified        Boolean        @default(false) @map("is_verified")
+  refreshToken      RefreshToken[]
+}
 
-  email             String    @unique @map("email") @db.VarChar(100)
-  password          String    @map("password")
-  verificationToken String?   @map("verification_token")
-  resetToken        String?   @map("reset_token")
-  resetTokenExpiry  DateTime? @map("reset_token_expiry")
-  isVerified        Boolean   @default(false) @map("is_verified")
+model RefreshToken {
+  id     String   @id @unique @default(dbgenerated("gen_random_uuid()"))
+  token  String   @unique @map("token")
+  expiry DateTime @map("expiry")
+  userId String   @map("user_id")
+  user   User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
