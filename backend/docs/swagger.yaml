@@ -1,3 +1,4 @@
+basePath: /api
 definitions:
   user.CreateAccountRequest:
     properties:
@@ -37,6 +38,9 @@ definitions:
     type: object
 info:
   contact: {}
+  description: API for Music Room
+  title: Music Room API
+  version: "1.0"
 paths:
   /api/auth/forget-password:
     post:
@@ -139,4 +143,48 @@ paths:
         "500":
           description: Internal Server Error
       summary: Verify account
+  /api/profile/me:
+    get:
+      responses:
+        "200":
+          description: OK
+        "404":
+          description: Not Found
+        "500":
+          description: Internal Server Error
+      security:
+      - CookieAuth: []
+      summary: Get current user
+    put:
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+        "404":
+          description: Not Found
+        "500":
+          description: Internal Server Error
+      security:
+      - CookieAuth: []
+      summary: Update current user
+  /api/profile/update-password:
+    put:
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+        "404":
+          description: Not Found
+        "500":
+          description: Internal Server Error
+      security:
+      - CookieAuth: []
+      summary: Update current user password
+securityDefinitions:
+  CookieAuth:
+    in: header
+    name: Cookie
+    type: apiKey
 swagger: "2.0"

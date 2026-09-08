@@ -9,6 +9,7 @@ import (
 
 type UserRepository interface {
 	Create(ctx context.Context, email, password, displayName, verificationToken string) (string, error)
+	Update(ctx context.Context, id string, request UpdateProfileRequest) (User, error)
 	Delete(ctx context.Context, id string) error
 	FindById(ctx context.Context, id string) (User, error)
 	FindByEmail(ctx context.Context, email string) (User, error)
@@ -46,6 +47,28 @@ func (r *UserRepositoryImpl) Create(ctx context.Context, email, password, displa
 	return result.ID, nil
 }
 
+func (r *UserRepositoryImpl) Update(ctx context.Context, id string, request UpdateProfileRequest) (User, error) {
+	result, err := r.Db.User.
+		FindUnique(db.User.ID.Equals(id)).
+		Update(
+			db.User.DisplayName.Set(request.DisplayName),
+		).
+		Exec(ctx)
+
+	if err != nil {
+		if db.IsErrNotFound(err) {
+			return User{}, helper.ErrUserNotFound
+		}
+		return User{}, err
+	}
+
+	return User{
+		Id:          result.ID,
+		Email:       result.Email,
+		DisplayName: result.DisplayName,
+	}, nil
+}
+
 func (r *UserRepositoryImpl) Delete(ctx context.Context, id string) error {
 	_, err := r.Db.User.
 		FindUnique(db.User.ID.Equals(id)).
@@ -75,9 +98,9 @@ func (r *UserRepositoryImpl) FindById(ctx context.Context, id string) (User, err
 	}
 
 	return User{
-		Id:         result.ID,
-		Email:      result.Email,
-		IsVerified: result.IsVerified,
+		Id:          result.ID,
+		Email:       result.Email,
+		DisplayName: result.DisplayName,
 	}, nil
 }
 

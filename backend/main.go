@@ -6,11 +6,20 @@ import (
 	"server/api/refreshtoken"
 	"server/api/user"
 	"server/config"
+	"server/middleware"
 	"server/prisma"
 	"server/router"
 	"time"
 )
 
+// @title Music Room API
+// @version 1.0
+// @description API for Music Room
+// @BasePath /api
+
+// @securityDefinitions.apikey CookieAuth
+// @in header
+// @name Cookie
 func main() {
 	cfg, err := config.NewConfig()
 	if err != nil {
@@ -23,6 +32,8 @@ func main() {
 	}
 	defer db.Prisma.Disconnect()
 
+	middleware := middleware.NewMiddleware(cfg)
+
 	refreshTokenRepository := refreshtoken.NewRefreshTokenRepository(db)
 	userRepository := user.NewUserRepository(db)
 
@@ -31,7 +42,7 @@ func main() {
 
 	userController := user.NewUserController(cfg, userService)
 
-	routes := router.NewRouter(userController)
+	routes := router.NewRouter(middleware, userController)
 
 	server := &http.Server{
 		Addr:           ":" + cfg.EnvBackendPort,

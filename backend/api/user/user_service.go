@@ -17,6 +17,9 @@ type UserService interface {
 	ResetPassword(ctx context.Context, token, password string) error
 	Logout(ctx context.Context, refreshToken string) error
 	RefreshToken(ctx context.Context, refreshToken string) (string, string, error)
+	GetProfile(ctx context.Context, id string) (User, error)
+	UpdateProfile(ctx context.Context, id string, request UpdateProfileRequest) (User, error)
+	UpdatePassword(ctx context.Context, id, password string) error
 }
 
 type UserServiceImpl struct {
@@ -147,4 +150,35 @@ func (s *UserServiceImpl) RefreshToken(ctx context.Context, oldToken string) (st
 	}
 
 	return newAccessToken, newRefreshToken, nil
+}
+
+func (s *UserServiceImpl) GetProfile(ctx context.Context, id string) (User, error) {
+	user, err := s.UserRepository.FindById(ctx, id)
+	if err != nil {
+		return User{}, err
+	}
+
+	return user, nil
+}
+
+func (s *UserServiceImpl) UpdateProfile(ctx context.Context, id string, request UpdateProfileRequest) (User, error) {
+	user, err := s.UserRepository.Update(ctx, id, request)
+	if err != nil {
+		return User{}, err
+	}
+
+	return user, nil
+}
+
+func (s *UserServiceImpl) UpdatePassword(ctx context.Context, id, password string) error {
+	hashPassword, err := helper.HashPassword(password)
+	if err != nil {
+		return err
+	}
+
+	if err := s.UserRepository.UpdatePassword(ctx, id, hashPassword); err != nil {
+		return err
+	}
+
+	return nil
 }

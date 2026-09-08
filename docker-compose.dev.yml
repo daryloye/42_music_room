@@ -6,7 +6,7 @@ services:
     command: >
       sh -c "
         go generate ./... &&
-        go run github.com/steebchen/prisma-client-go db push --skip-generate --schema=prisma/schema.prisma &&
+        go run github.com/steebchen/prisma-client-go db push --skip-generate --schema=prisma/schema.prisma --accept-data-loss &&
         go run main.go
       "
 

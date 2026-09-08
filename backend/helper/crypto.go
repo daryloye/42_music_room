@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
+	"fmt"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -53,4 +54,25 @@ func CreateJWT(userId, secret string, expiry time.Duration) (string, error) {
 	}
 
 	return signedToken, nil
+}
+
+func DecodeJWT(tokenString, secret string) (string, error) {
+	claims := &JWTClaims{}
+
+	token, err := jwt.ParseWithClaims(
+		tokenString,
+		claims,
+		func(token *jwt.Token) (any, error) {
+			return []byte(secret), nil
+		},
+		jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Alg()}),
+		jwt.WithExpirationRequired(),
+	)
+
+	if err != nil || token == nil || !token.Valid || claims.UserId == "" {
+		fmt.Println(err)
+		return "", ErrUserInvalidOrExpiredToken
+	}
+
+	return claims.UserId, nil
 }

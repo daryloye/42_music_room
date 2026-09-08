@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"server/config"
 	"server/helper"
+	"server/middleware"
 	"time"
 
 	"github.com/julienschmidt/httprouter"
@@ -348,6 +349,122 @@ func (c *UserController) RefreshToken(w http.ResponseWriter, r *http.Request, pa
 
 	response := map[string]string{
 		"message": "Token refreshed",
+	}
+
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		log.Println("Failed to write response:", err)
+	}
+}
+
+// @Summary Get current user
+// @Security CookieAuth
+// @Success 200
+// @Failure 404
+// @Failure 500
+// @Router /api/profile/me [get]
+func (c *UserController) GetProfile(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
+	userId := middleware.UserIdFromContext(r.Context())
+
+	response, err := c.UserService.GetProfile(r.Context(), userId)
+	if err != nil {
+		log.Println("Failed to get profile:", err)
+		switch {
+		case errors.Is(err, helper.ErrUserNotFound):
+			http.Error(w, err.Error(), http.StatusNotFound)
+		default:
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+		}
+		return
+	}
+
+	w.Header().Add("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		log.Println("Failed to write response:", err)
+	}
+}
+
+// @Summary Update current user
+// @Security CookieAuth
+// @Success 200
+// @Failure 400
+// @Failure 404
+// @Failure 500
+// @Router /api/profile/me [put]
+func (c *UserController) UpdateProfile(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
+	userId := middleware.UserIdFromContext(r.Context())
+
+	var request UpdateProfileRequest
+
+	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+		http.Error(w, "Invalid JSON payload", http.StatusBadRequest)
+		return
+	}
+
+	if request.DisplayName == "" {
+		http.Error(w, "Missing required fields", http.StatusBadRequest)
+		return
+	}
+
+	response, err := c.UserService.UpdateProfile(r.Context(), userId, request)
+	if err != nil {
+		log.Println("Failed to update profile:", err)
+		switch {
+		case errors.Is(err, helper.ErrUserNotFound):
+			http.Error(w, err.Error(), http.StatusNotFound)
+		default:
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+		}
+		return
+	}
+
+	w.Header().Add("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		log.Println("Failed to write response:", err)
+	}
+}
+
+// @Summary Update current user password
+// @Security CookieAuth
+// @Success 200
+// @Failure 400
+// @Failure 404
+// @Failure 500
+// @Router /api/profile/update-password [put]
+func (c *UserController) UpdatePassword(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
+	userId := middleware.UserIdFromContext(r.Context())
+
+	var request UpdatePasswordRequest
+
+	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+		http.Error(w, "Invalid JSON payload", http.StatusBadRequest)
+		return
+	}
+
+	if request.Password == "" {
+		http.Error(w, "Missing required fields", http.StatusBadRequest)
+		return
+	}
+
+	if err := c.UserService.UpdatePassword(r.Context(), userId, request.Password); err != nil {
+		log.Println("Failed to update password:", err)
+		switch {
+		case errors.Is(err, helper.ErrUserNotFound):
+			http.Error(w, err.Error(), http.StatusNotFound)
+		default:
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+		}
+		return
+	}
+
+	w.Header().Add("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+
+	response := map[string]string{
+		"message": "Password updated",
 	}
 
 	if err := json.NewEncoder(w).Encode(response); err != nil {

@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"server/api/user"
+	"server/middleware"
 	"time"
 
 	"github.com/julienschmidt/httprouter"
@@ -27,7 +28,7 @@ func healthCheckHandler(w http.ResponseWriter, r *http.Request, p httprouter.Par
 	}
 }
 
-func NewRouter(userController *user.UserController) *httprouter.Router {
+func NewRouter(middleware middleware.Middleware, userController *user.UserController) *httprouter.Router {
 	router := httprouter.New()
 
 	router.GET("/health", healthCheckHandler)
@@ -39,6 +40,10 @@ func NewRouter(userController *user.UserController) *httprouter.Router {
 	router.POST("/api/auth/forget-password", userController.ForgetPassword)
 	router.POST("/api/auth/reset-password", userController.ResetPassword)
 	router.POST("/api/auth/refresh", userController.RefreshToken)
+
+	router.GET("/api/profile/me", middleware.RequireAuth(userController.GetProfile))
+	router.PUT("/api/profile/me", middleware.RequireAuth(userController.UpdateProfile))
+	router.PUT("/api/profile/update-password", middleware.RequireAuth(userController.UpdatePassword))
 
 	return router
 }

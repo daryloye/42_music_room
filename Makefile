@@ -28,7 +28,7 @@ generate-prisma:
 	cd backend && go generate ./...
 
 generate-swagger:
-	cd backend && swag init
+	cd backend && go run github.com/swaggo/swag/cmd/swag@v1.16.6 init
 
 test:
 	cd bruno && npm run test

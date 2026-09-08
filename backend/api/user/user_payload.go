@@ -23,3 +23,11 @@ type ResetPasswordRequest struct {
 	Token    string `validate:"required" json:"token"`
 	Password string `validate:"required" json:"password"`
 }
+
+type UpdateProfileRequest struct {
+	DisplayName string `validate:"required" json:"display_name"`
+}
+
+type UpdatePasswordRequest struct {
+	Password string `validate:"required" json:"password"`
+}

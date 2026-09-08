@@ -1,0 +1,16 @@
+meta {
+  name: 00_get_profile_me
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/profile/me
+  body: none
+  auth: inherit
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
